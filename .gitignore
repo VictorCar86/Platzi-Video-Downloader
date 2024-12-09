@@ -68,5 +68,13 @@ venv
 # PEP 582; used by e.g. github.com/David-OConnor/pyflow
 __pypackages__/
 
-# videos output files
+# Browser utils
+chromedriver*
+cookies.pkl
+
+# Videos output files
+**/segments/*.ts
 *.mp4
+
+# env files
+.env
