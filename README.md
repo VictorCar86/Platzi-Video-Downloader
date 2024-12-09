@@ -1,84 +1,98 @@
 # Platzi Video Downloader
 
-Este script en Python descarga y combina segmentos de video en formato `.ts` listados en un archivo `.m3u8`, y los guarda como un archivo `.mp4` final. Los segmentos se descargan en paralelo utilizando `ThreadPoolExecutor` para mejorar la eficiencia.
+## Overview
+This Python script is a comprehensive tool for downloading video courses and individual classes from the Platzi platform. It uses Selenium WebDriver for web automation, requests for downloading video segments, and supports various download modes.
 
-## Requisitos Previos
+## Prerequisites
+- Python 3.x
+- Google Chrome or Chromium installed
+- ChromeDriver in root folder
+- Required libraries:
+  - `selenium`
+  - `seleniumwire`
+  - `requests`
+  - `python-dotenv`
+  - `brotli`
 
-Antes de ejecutar el script, asegúrate de tener instalados los siguientes componentes:
+## Environment Setup
+1. Create a `.env` file in the project root directory
+2. Add the following environment variables:
+   ```
+   EMAIL=your_platzi_email
+   PASSWORD=your_platzi_password
+   ```
 
-- **Python 3.6+**
-- **Biblioteca `requests`**
-
-Puedes instalar la biblioteca necesaria ejecutando:
-
+## Installation
 ```bash
-pip install requests
+pip install -r requirements.txt
 ```
 
-## Estructura de Archivos
+## Execution Modes
+The script supports four execution modes:
 
-```
-/project-directory
-│
-├── main.py                # El script Python
-├── index.m3u8             # Archivo .m3u8 con las URLs de los segmentos
-└── output/                # Carpeta donde se guardará el video final
-    └── segments/          # Carpeta temporal para almacenar los segmentos descargados
-```
-
-## Uso
-
-### 1. Archivo `.m3u8`
-
-Coloca el archivo `.m3u8` en el mismo directorio que el script. Este archivo debe contener una lista de URLs de los segmentos `.ts` que deseas descargar.
-
-### 2. Ejecutar el Script
-
-Para ejecutar el script, abre una terminal en el directorio del script y ejecuta:
-
+### 1. Login Mode
 ```bash
-python main.py nombre_archivo_salida
+python main.py login
 ```
+- Logs into the Platzi platform
+- Saves authentication cookies for subsequent operations
 
-- `nombre_archivo_salida`: Nombre del archivo final `.mp4` (sin extensión). Si no se especifica, se utilizará el nombre `video.mp4` de manera predeterminada.
-
-### Ejemplo:
-
+### 2. Download Course Mode
 ```bash
-python main.py mi_video
+python main.py download-course <course_url>
 ```
+- Downloads entire course videos
+- Creates a directory with the course name
+- Saves videos in sequential order
 
-Esto descargará y combinará los segmentos en un archivo llamado `mi_video.mp4` dentro de la carpeta `output`.
+### 3. Download Class Mode
+```bash
+python main.py download-class <class_url>
+```
+- Downloads a single class video
+- Saves the video in the `output` directory
 
-## Explicación del Código
+### 4. M3U8 Download Mode
+```bash
+python main.py m3u8 [video_name]
+```
+- Downloads video segments from a local `.m3u8` file
+- If no video name is provided, it will prompt the user to enter one
 
-### Funciones Principales
+## Key Components
 
-#### `download_ts_segment(index, url, segments_dir)`
+### Main Functions
+- `login_platzi()`: Authenticates user on Platzi platform
+- `download_course(url)`: Downloads all videos in a course
+- `download_class(url)`: Downloads a single class video
+- `download_by_m3u8(file_name)`: Downloads video from local `.m3u8` file
 
-- Descarga un segmento de video desde una URL específica.
-- Guarda el archivo en el directorio `segments` con un nombre basado en su índice.
-- Retorna la ruta del archivo descargado.
+### Utility Functions
+- `get_ts_urls()`: Extracts video segment URLs from `.m3u8` files
+- `download_ts_segment()`: Downloads individual video segments
+- `download_all_segments()`: Parallel download and assembly of video segments
 
-#### `download_all_segments(m3u8_file, output_dir, file_name, max_workers=5)`
+## Workflow
+1. Authenticate using login mode
+2. Use download modes to retrieve videos
+3. Videos are saved in the `output` directory
 
-- Lee las URLs del archivo `.m3u8` y las descarga en paralelo.
-- Combina todos los segmentos descargados en un solo archivo `.mp4` final.
+## Limitations
+- Requires valid Platzi credentials
+- Depends on platform's video streaming structure
+- Requires compatible ChromeDriver version
 
-#### `main`
+## Error Handling
+- Handles various network and download exceptions
+- Prints detailed error messages
+- Skips problematic video segments
 
-- Busca automáticamente el archivo `.m3u8` en el directorio actual.
-- Llama a `download_all_segments` para realizar la descarga y combinación.
+## Security and Performance
+- Uses parallel downloads for faster video retrieval
+- Manages temporary files and cleanup
+- Implements timeout and retry mechanisms
 
-## Directorios y Archivos Generados
-
-- **`output/`**: Carpeta que contiene:
-  - `segments/`: Archivos de segmentos descargados (`.ts`).
-  - Archivo combinado final en formato `.mp4`.
-
-## Notas
-
-- Si deseas mantener los archivos de segmento después de la combinación, elimina la línea que los borra.
-- Aumenta el número de `max_workers` si deseas descargar más segmentos en paralelo, pero ten en cuenta las limitaciones de tu conexión a internet.
-
----
+## Troubleshooting
+- Verify ChromeDriver compatibility
+- Ensure valid Platzi credentials
+- Update dependencies if errors occur
