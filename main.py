@@ -17,7 +17,7 @@ if __name__ == "__main__":
     [exec_mode, parameter] = get_argvs()
 
     if exec_mode == "login":
-        login_platzi()
+        login_platzi(headless=False)
     elif exec_mode == "download-course":
         download_course(parameter)
     elif exec_mode == "download-class":

@@ -48,10 +48,11 @@ def get_ts_urls(driver: webdriver, downloaded_m3u8_urls: list[str]):
                 return request.url, urls
     return None, []
 
-def get_driver():
+def get_driver(headless=True):
     options = webdriver.ChromeOptions()
     options.add_argument("--no-sandbox")
-    # options.add_argument("--headless")
+    if headless:
+        options.add_argument("--headless")
     options.add_argument("--disable-extensions")
     options.add_argument("--disable-dev-shm-usage")
     options.add_argument("--remote-debugging-port=9222")
@@ -59,7 +60,7 @@ def get_driver():
     return webdriver.Chrome(options=options)
 
 def login_platzi():
-    driver = get_driver()
+    driver = get_driver(headless=True)
     driver.get(f"{ROOT_URL}/login")
 
     # Simulate manual login
