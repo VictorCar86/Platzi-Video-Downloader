@@ -4,3 +4,5 @@ selenium==4.27.1
 selenium-wire==5.1.0
 Brotli==1.1.0
 blinker==1.7.0
+packaging==24.2
+setuptools==75.3.0

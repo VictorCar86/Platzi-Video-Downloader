@@ -49,15 +49,14 @@ def get_ts_urls(driver: webdriver, downloaded_m3u8_urls: list[str]):
     return None, []
 
 def get_driver():
-    driver_path = os.path.join(ROOT_DIR,"./chromedriver-linux64/chromedriver")
-    service = Service(executable_path=driver_path)
     options = webdriver.ChromeOptions()
     options.add_argument("--no-sandbox")
-    options.add_argument("--headless")
+    # options.add_argument("--headless")
     options.add_argument("--disable-extensions")
     options.add_argument("--disable-dev-shm-usage")
     options.add_argument("--remote-debugging-port=9222")
-    return webdriver.Chrome(options=options,service=service)
+    # Rely on Selenium Manager to resolve and download the correct ChromeDriver
+    return webdriver.Chrome(options=options)
 
 def login_platzi():
     driver = get_driver()
