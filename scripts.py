@@ -60,7 +60,7 @@ def get_driver(headless=True):
     return webdriver.Chrome(options=options)
 
 def login_platzi():
-    driver = get_driver(headless=True)
+    driver = get_driver(headless=False)
     driver.get(f"{ROOT_URL}/login")
 
     # Simulate manual login
