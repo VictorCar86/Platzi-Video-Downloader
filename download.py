@@ -1,10 +1,45 @@
 import os
 import time
 import random
+import threading
 import requests
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from constants import HEADERS, OUTPUT_DIR
 from utils import sanitize_filename
+
+
+class RateLimiter:
+    """
+    Simple thread-safe rate limiter. Ensures a minimum interval between requests
+    across threads and supports global penalization when the server rate-limits.
+    """
+    def __init__(self, requests_per_second: float = 2.0):
+        self.lock = threading.Lock()
+        self.interval = 1.0 / max(requests_per_second, 1.0)
+        self.next_allowed = 0.0
+
+    def wait(self):
+        with self.lock:
+            now = time.time()
+            sleep_time = max(0.0, self.next_allowed - now)
+            # Schedule next allowed time spaced by interval
+            self.next_allowed = max(self.next_allowed, now) + self.interval
+        if sleep_time > 0:
+            time.sleep(sleep_time)
+
+    def penalize(self, seconds: float):
+        with self.lock:
+            self.next_allowed = max(self.next_allowed, time.time() + max(0.0, seconds))
+
+
+GLOBAL_RATE_LIMITER = RateLimiter(requests_per_second=2.0)
+_rate_lock = threading.Lock()
+RATE_LIMIT_HITS = 0
+
+def _record_rate_limit_hit():
+    global RATE_LIMIT_HITS
+    with _rate_lock:
+        RATE_LIMIT_HITS += 1
 
 
 def download_ts_segment(index: int, ts_url: str, segments_dir: str, max_retries: int = 5):
@@ -19,6 +54,8 @@ def download_ts_segment(index: int, ts_url: str, segments_dir: str, max_retries:
     """
     for attempt in range(1, max_retries + 1):
         try:
+            # Global pacing to avoid bursts that trigger 429
+            GLOBAL_RATE_LIMITER.wait()
             response = requests.get(ts_url, headers=HEADERS, timeout=20)
 
             if response.status_code == 429:
@@ -29,6 +66,9 @@ def download_ts_segment(index: int, ts_url: str, segments_dir: str, max_retries:
                     wait_seconds = None
                 if wait_seconds is None:
                     wait_seconds = min(30, 1.5 * (2 ** (attempt - 1)))
+                # Record hit and penalize globally to slow down other threads too
+                _record_rate_limit_hit()
+                GLOBAL_RATE_LIMITER.penalize(wait_seconds)
                 time.sleep(wait_seconds + random.uniform(0, 0.2))
                 continue
 
