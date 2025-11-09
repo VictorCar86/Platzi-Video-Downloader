@@ -139,6 +139,11 @@ def download_course(url):
         download_all_segments(ts_urls, class_title, course_dir)
         print("🆕 Descarga de video completada")
 
+    # Remove resid segments folder
+    segments_dir = os.path.join(course_dir, "segments")
+    if os.path.exists(segments_dir):
+        os.rmdir(segments_dir)
+
     print("✅ Descarga del curso completada:", course_title)
 
     driver.quit()
