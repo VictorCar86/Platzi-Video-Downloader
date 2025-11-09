@@ -8,6 +8,7 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait
 from constants import ROOT_URL, ROOT_DIR, OUTPUT_DIR, EMAIL, PASSWORD
 from download import download_all_segments
+from utils import sanitize_filename
 
 
 def save_cookies(driver):
@@ -81,7 +82,7 @@ def login_platzi():
     driver.quit()
 
 def download_course(url):
-    driver = get_driver()
+    driver = get_driver(headless=False)
     driver.get(ROOT_URL)
 
     load_cookies(driver)
@@ -93,7 +94,7 @@ def download_course(url):
         EC.visibility_of_element_located((By.TAG_NAME, "h1"))
     )
     course_title = driver.find_element(By.TAG_NAME, "h1").text
-    course_title = course_title.strip().replace(" ", "_")
+    course_title = sanitize_filename(course_title)
 
     course_urls = driver.find_elements(By.CSS_SELECTOR, "a[href^='/cursos/']")
     course_urls = [link.get_attribute("href") for link in course_urls if "#" not in link.get_attribute("href")]
@@ -112,7 +113,7 @@ def download_course(url):
 
         # Wait for the video to load
         try:
-            WebDriverWait(driver, 20).until(
+            WebDriverWait(driver, 30).until(
                 EC.visibility_of_element_located((By.TAG_NAME, "video"))
             )
         except TimeoutException:
@@ -121,7 +122,7 @@ def download_course(url):
 
         formatted_index = str(index+1).zfill(2)
         class_title = driver.find_element(By.TAG_NAME, "h1").text
-        class_title = class_title.strip().replace(" ", "_")
+        class_title = sanitize_filename(class_title)
         class_title = f"{formatted_index}_{class_title}"
 
         time.sleep(8) # Add more time if your internet is slow - necessary to catch requests
@@ -165,7 +166,7 @@ def download_class(url):
         EC.visibility_of_element_located((By.TAG_NAME, "h1"))
     )
     course_title = driver.find_element(By.TAG_NAME, "h1").text
-    course_title = course_title.strip().replace(" ", "_")
+    course_title = sanitize_filename(course_title)
 
     time.sleep(8) # Add more time if your internet is slow - necessary to catch requests
 

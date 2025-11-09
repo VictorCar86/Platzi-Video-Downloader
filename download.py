@@ -2,6 +2,7 @@ import os
 import requests
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from constants import HEADERS, OUTPUT_DIR
+from utils import sanitize_filename
 
 
 def download_ts_segment(index: int, ts_url: str, segments_dir: str):
@@ -55,7 +56,8 @@ def download_all_segments(ts_urls: list[str], file_name: str, output_dir: str = 
     segment_files.sort()
 
     # Combine the downloaded segments into a single .mp4 file
-    combined_file_path = os.path.join(output_dir, f"{file_name}.mp4")
+    safe_name = sanitize_filename(file_name)
+    combined_file_path = os.path.join(output_dir, f"{safe_name}.mp4")
     with open(combined_file_path, "wb") as output_file:
         for segment_file in segment_files:
             with open(segment_file, "rb") as segment:
@@ -74,7 +76,7 @@ def download_by_m3u8(file_name: str):
     """
     if not file_name:
         file_name = input("Ingrese el nombre del video: ")
-    file_name = file_name.strip().replace(" ", "_")
+    file_name = sanitize_filename(file_name)
 
     if m3u8_files := [file for file in os.listdir() if file.endswith(".m3u8")]:
         m3u8_file = m3u8_files[0]
@@ -82,6 +84,6 @@ def download_by_m3u8(file_name: str):
             ts_urls = [line.strip() for line in f if line.startswith("https")]
         print("🔗 Descargando segmentos desde:", m3u8_file)
         download_all_segments(ts_urls, file_name)
-        print("✅ Descarga de video completada:", f"{file_name}.mp4")
+        print("✅ Descarga de video completada:", f"{sanitize_filename(file_name)}.mp4")
     else:
         print("No se encontraron archivos .m3u8 en el directorio.")
