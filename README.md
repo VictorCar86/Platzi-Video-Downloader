@@ -88,11 +88,14 @@ python main.py m3u8 [video_name]
 - Skips problematic video segments
 
 ## Security and Performance
-- Uses parallel downloads for faster video retrieval
-- Manages temporary files and cleanup
-- Implements timeout and retry mechanisms
+- Uses parallel downloads with conservative concurrency (default `3` workers)
+- Implements exponential backoff and respects `Retry-After` on `429` responses
+- Performs a sequential retry pass for segments that fail in parallel
+- Manages temporary files and performs safe cleanup of the `segments` folder
+- Uses reasonable request timeouts to avoid hangs
 
 ## Troubleshooting
 - Verify ChromeDriver compatibility
 - Ensure valid Platzi credentials
+- If you see `429 Too Many Requests`, the downloader will backoff and retry automatically. You can further reduce concurrency by passing a lower `max_workers` to `download_all_segments`.
 - Update dependencies if errors occur

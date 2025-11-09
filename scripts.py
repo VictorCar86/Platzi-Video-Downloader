@@ -1,4 +1,4 @@
-import time, os, pickle, brotli, gzip
+import time, os, pickle, brotli, gzip, shutil
 from io import BytesIO
 from seleniumwire import webdriver
 from selenium.webdriver.chrome.service import Service
@@ -142,7 +142,7 @@ def download_course(url):
     # Remove resid segments folder
     segments_dir = os.path.join(course_dir, "segments")
     if os.path.exists(segments_dir):
-        os.rmdir(segments_dir)
+        shutil.rmtree(segments_dir, ignore_errors=True)
 
     print("✅ Descarga del curso completada:", course_title)
 

@@ -1,11 +1,13 @@
 import os
+import time
+import random
 import requests
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from constants import HEADERS, OUTPUT_DIR
 from utils import sanitize_filename
 
 
-def download_ts_segment(index: int, ts_url: str, segments_dir: str):
+def download_ts_segment(index: int, ts_url: str, segments_dir: str, max_retries: int = 5):
     """
     Downloads a video segment from a URL and saves it in a temporary file.
     Args:
@@ -15,21 +17,38 @@ def download_ts_segment(index: int, ts_url: str, segments_dir: str):
     Returns:
         str: The path to the saved segment file.
     """
-    try:
-        response = requests.get(ts_url, headers=HEADERS, timeout=10)
-        response.raise_for_status()
+    for attempt in range(1, max_retries + 1):
+        try:
+            response = requests.get(ts_url, headers=HEADERS, timeout=20)
 
-        segment_filename = os.path.join(segments_dir, f"segment_{index:05d}.ts")
-        with open(segment_filename, "wb") as file:
-            file.write(response.content)
+            if response.status_code == 429:
+                retry_after = response.headers.get("Retry-After")
+                try:
+                    wait_seconds = int(retry_after) if retry_after else None
+                except ValueError:
+                    wait_seconds = None
+                if wait_seconds is None:
+                    wait_seconds = min(30, 1.5 * (2 ** (attempt - 1)))
+                time.sleep(wait_seconds + random.uniform(0, 0.2))
+                continue
 
-        return segment_filename
-    except Exception as e:
-        print(f"Error al descargar {ts_url}: {str(e)}")
-        return None
+            response.raise_for_status()
+
+            segment_filename = os.path.join(segments_dir, f"segment_{index:05d}.ts")
+            with open(segment_filename, "wb") as file:
+                file.write(response.content)
+
+            return segment_filename
+        except requests.RequestException as e:
+            if attempt < max_retries:
+                wait_seconds = min(30, 1.5 * (2 ** (attempt - 1)))
+                time.sleep(wait_seconds + random.uniform(0, 0.2))
+                continue
+            print(f"Error al descargar {ts_url}: {str(e)}")
+            return None
 
 
-def download_all_segments(ts_urls: list[str], file_name: str, output_dir: str = OUTPUT_DIR, max_workers=5):
+def download_all_segments(ts_urls: list[str], file_name: str, output_dir: str = OUTPUT_DIR, max_workers: int = 3):
     """
     Downloads all video segments listed in a list of URLs in parallel and combines them into a single .mp4 file.
     Args:
@@ -43,13 +62,27 @@ def download_all_segments(ts_urls: list[str], file_name: str, output_dir: str = 
 
     segment_files = []
 
+    failed_indices = []
+
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
         future_to_index = {
             executor.submit(download_ts_segment, index, url, segments_dir): index for index, url in enumerate(ts_urls)
         }
 
         for future in as_completed(future_to_index):
-            if result := future.result():
+            index = future_to_index[future]
+            result = future.result()
+            if result:
+                segment_files.append(result)
+            else:
+                failed_indices.append(index)
+
+    if failed_indices:
+        print(f"↻ Reintentando {len(failed_indices)} segmentos de forma secuencial...")
+        for index in failed_indices:
+            url = ts_urls[index]
+            result = download_ts_segment(index, url, segments_dir)
+            if result:
                 segment_files.append(result)
 
     # Sort the segment files before combining
