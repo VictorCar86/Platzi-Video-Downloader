@@ -125,6 +125,12 @@ def download_course(url):
         class_title = sanitize_filename(class_title)
         class_title = f"{formatted_index}_{class_title}"
 
+        # validate if video is already downloaded
+        if os.path.exists(os.path.join(course_dir, f"{class_title}.mp4")):
+            print("⚠️ El video ya ha sido descargado:", course_url)
+            continue
+
+
         time.sleep(8) # Add more time if your internet is slow - necessary to catch requests
 
         [m3u8_url, ts_urls] = get_ts_urls(driver, downloaded_m3u8_urls)
