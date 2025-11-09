@@ -95,8 +95,8 @@ def download_course(url):
     course_title = driver.find_element(By.TAG_NAME, "h1").text
     course_title = course_title.strip().replace(" ", "_")
 
-    course_urls = driver.find_elements(By.CSS_SELECTOR, "a[href^='/clases/']")
-    course_urls = [link.get_attribute("href") for link in course_urls]
+    course_urls = driver.find_elements(By.CSS_SELECTOR, "a[href^='/cursos/']")
+    course_urls = [link.get_attribute("href") for link in course_urls if "#" not in link.get_attribute("href")]
 
     course_dir = os.path.join(OUTPUT_DIR, course_title)
     os.makedirs(course_dir, exist_ok=True)
