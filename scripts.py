@@ -96,13 +96,17 @@ def download_course(url):
     course_title = driver.find_element(By.TAG_NAME, "h1").text
     course_title = sanitize_filename(course_title)
 
-    course_urls = driver.find_elements(By.CSS_SELECTOR, "a[href^='/cursos/']")
+    course_urls = driver.find_elements(By.CSS_SELECTOR, "a[class*='ItemLink'][href*='/cursos/']")
     course_urls = [link.get_attribute("href") for link in course_urls if "#" not in link.get_attribute("href")]
+
+    if len(course_urls) == 0:
+        print("❌ No se encontraron videos para descargar")
+        return
 
     course_dir = os.path.join(OUTPUT_DIR, course_title)
     os.makedirs(course_dir, exist_ok=True)
 
-    print("Descargando curso:", course_title)
+    print("⬇️ Descargando curso:", course_title)
 
     downloaded_m3u8_urls = []
 
@@ -156,7 +160,7 @@ def download_course(url):
 
 
 def download_class(url):
-    driver = get_driver()
+    driver = get_driver(headless=False)
     driver.get(ROOT_URL)
 
     load_cookies(driver)
