@@ -15,11 +15,13 @@ def save_cookies(driver):
     with open("cookies.pkl", "wb") as archivo:
         pickle.dump(driver.get_cookies(), archivo)
 
+
 def load_cookies(driver):
     with open("cookies.pkl", "rb") as archivo:
         cookies = pickle.load(archivo)
         for cookie in cookies:
             driver.add_cookie(cookie)
+
 
 def get_ts_urls(driver: webdriver, downloaded_m3u8_urls: list[str]):
     """
@@ -35,12 +37,12 @@ def get_ts_urls(driver: webdriver, downloaded_m3u8_urls: list[str]):
             # print("🌐 request URL:", request.url)
             if body := request.response.body:
                 try:
-                    decoded_body = brotli.decompress(body).decode('utf-8')
+                    decoded_body = brotli.decompress(body).decode("utf-8")
                 except brotli.error as e:
                     # print("Brotli decompression failed:", e)
                     try:
-                        with gzip.GzipFile(fileobj=BytesIO(body), mode='rb') as f:
-                            decoded_body = f.read().decode('utf-8')
+                        with gzip.GzipFile(fileobj=BytesIO(body), mode="rb") as f:
+                            decoded_body = f.read().decode("utf-8")
                     except Exception as e:
                         print("Gzip decompression failed:", e)
                         continue
@@ -48,6 +50,7 @@ def get_ts_urls(driver: webdriver, downloaded_m3u8_urls: list[str]):
                 urls = [url for url in body_lines if url.startswith("https")]
                 return request.url, urls
     return None, []
+
 
 def get_driver(headless=True):
     options = webdriver.ChromeOptions()
@@ -59,6 +62,7 @@ def get_driver(headless=True):
     options.add_argument("--remote-debugging-port=9222")
     # Rely on Selenium Manager to resolve and download the correct ChromeDriver
     return webdriver.Chrome(options=options)
+
 
 def login_platzi():
     driver = get_driver(headless=False)
@@ -75,11 +79,14 @@ def login_platzi():
 
     # Wait until home page is loaded
     WebDriverWait(driver, 90).until(
-        EC.visibility_of_element_located((By.CSS_SELECTOR, ".styles-module_Menu__Avatar__FTuh-"))
+        EC.visibility_of_element_located(
+            (By.CSS_SELECTOR, ".styles-module_Menu__Avatar__FTuh-")
+        )
     )
 
     save_cookies(driver)
     driver.quit()
+
 
 def download_course(url):
     driver = get_driver(headless=False)
@@ -96,22 +103,47 @@ def download_course(url):
     course_title = driver.find_element(By.TAG_NAME, "h1").text
     course_title = sanitize_filename(course_title)
 
-    course_urls = driver.find_elements(By.CSS_SELECTOR, "a[class*='ItemLink'][href*='/cursos/']")
-    course_urls = [link.get_attribute("href") for link in course_urls if "#" not in link.get_attribute("href")]
-
-    if len(course_urls) == 0:
-        print("❌ No se encontraron videos para descargar")
-        return
+    course_urls = driver.find_elements(
+        By.CSS_SELECTOR, "a[class*='ItemLink'][href*='/cursos/']"
+    )
+    parsed_course_urls = [
+        {
+            "index": link.find_element(By.TAG_NAME, "span").text,
+            "title": link.find_element(By.TAG_NAME, "h3").text,
+            "url": link.get_attribute("href"),
+        }
+        for link in course_urls
+        if "#" not in link.get_attribute("href")
+    ]
 
     course_dir = os.path.join(OUTPUT_DIR, course_title)
     os.makedirs(course_dir, exist_ok=True)
+
+    existing_class_files = {
+        f[:-4] for f in os.listdir(course_dir) if f.endswith(".mp4")
+    }
+    parsed_course_urls = [
+        course
+        for course in parsed_course_urls
+        if f"{str(course['index']).zfill(2)}_{sanitize_filename(course['title'])}"
+        not in existing_class_files
+    ]
+
+    if len(parsed_course_urls) == 0:
+        print("✅ No hay clases pendientes para descargar en:", course_title)
+        driver.quit()
+        return
 
     print("⬇️ Descargando curso:", course_title)
 
     downloaded_m3u8_urls = []
 
     # Download each class
-    for index, course_url in enumerate(course_urls):
+    for course_info in parsed_course_urls:
+        course_index = course_info["index"]
+        course_title = course_info["title"]
+        course_url = course_info["url"]
+
         driver.requests.clear()
         driver.get(course_url)
 
@@ -124,18 +156,14 @@ def download_course(url):
             print("❌ No se pudo cargar el video de la clase:", course_url)
             continue
 
-        formatted_index = str(index+1).zfill(2)
+        formatted_index = str(course_index).zfill(2)
         class_title = driver.find_element(By.TAG_NAME, "h1").text
         class_title = sanitize_filename(class_title)
         class_title = f"{formatted_index}_{class_title}"
 
-        # validate if video is already downloaded
-        if os.path.exists(os.path.join(course_dir, f"{class_title}.mp4")):
-            print("⚠️ El video ya ha sido descargado:", course_url)
-            continue
-
-
-        time.sleep(8) # Add more time if your internet is slow - necessary to catch requests
+        time.sleep(
+            8
+        )  # Add more time if your internet is slow - necessary to catch requests
 
         [m3u8_url, ts_urls] = get_ts_urls(driver, downloaded_m3u8_urls)
 
@@ -183,7 +211,9 @@ def download_class(url):
     course_title = driver.find_element(By.TAG_NAME, "h1").text
     course_title = sanitize_filename(course_title)
 
-    time.sleep(8) # Add more time if your internet is slow - necessary to catch requests
+    time.sleep(
+        8
+    )  # Add more time if your internet is slow - necessary to catch requests
 
     [_, ts_urls] = get_ts_urls(driver, [])
 
