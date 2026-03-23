@@ -1,4 +1,4 @@
-import time, os, pickle, brotli, gzip, shutil
+import time, os, pickle, brotli, gzip
 from io import BytesIO
 from seleniumwire import webdriver
 from selenium.webdriver.chrome.service import Service
@@ -32,14 +32,14 @@ def get_ts_urls(driver: webdriver, downloaded_m3u8_urls: list[str]):
     Returns:
         tuple: A tuple containing the URL of the .m3u8 file and a list of URLs of the .ts segments.
     """
+    all_m3u8_data = []
+
     for request in driver.requests:
         if ".m3u8?" in request.url and request.url not in downloaded_m3u8_urls:
-            # print("🌐 request URL:", request.url)
             if body := request.response.body:
                 try:
                     decoded_body = brotli.decompress(body).decode("utf-8")
-                except brotli.error as e:
-                    # print("Brotli decompression failed:", e)
+                except brotli.error:
                     try:
                         with gzip.GzipFile(fileobj=BytesIO(body), mode="rb") as f:
                             decoded_body = f.read().decode("utf-8")
@@ -48,8 +48,14 @@ def get_ts_urls(driver: webdriver, downloaded_m3u8_urls: list[str]):
                         continue
                 body_lines = decoded_body.splitlines()
                 urls = [url for url in body_lines if url.startswith("https")]
-                return request.url, urls
-    return None, []
+                if urls:
+                    all_m3u8_data.append((request.url, urls))
+
+    if not all_m3u8_data:
+        return None, []
+
+    all_m3u8_data.sort(key=lambda x: len(x[1]), reverse=True)
+    return all_m3u8_data[0]
 
 
 def get_driver(headless=True):
@@ -176,11 +182,6 @@ def download_course(url):
         print("🔗 Descargando video:", class_title)
         download_all_segments(ts_urls, class_title, course_dir)
         print("🆕 Descarga de video completada")
-
-    # Remove resid segments folder
-    segments_dir = os.path.join(course_dir, "segments")
-    if os.path.exists(segments_dir):
-        shutil.rmtree(segments_dir, ignore_errors=True)
 
     print("✅ Descarga del curso completada:", course_title)
 

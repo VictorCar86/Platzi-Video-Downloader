@@ -13,6 +13,7 @@ class RateLimiter:
     Simple thread-safe rate limiter. Ensures a minimum interval between requests
     across threads and supports global penalization when the server rate-limits.
     """
+
     def __init__(self, requests_per_second: float = 2.0):
         self.lock = threading.Lock()
         self.interval = 1.0 / max(requests_per_second, 1.0)
@@ -36,13 +37,16 @@ GLOBAL_RATE_LIMITER = RateLimiter(requests_per_second=2.0)
 _rate_lock = threading.Lock()
 RATE_LIMIT_HITS = 0
 
+
 def _record_rate_limit_hit():
     global RATE_LIMIT_HITS
     with _rate_lock:
         RATE_LIMIT_HITS += 1
 
 
-def download_ts_segment(index: int, ts_url: str, segments_dir: str, max_retries: int = 5):
+def download_ts_segment(
+    index: int, ts_url: str, segments_dir: str, max_retries: int = 5
+):
     """
     Downloads a video segment from a URL and saves it in a temporary file.
     Args:
@@ -88,7 +92,12 @@ def download_ts_segment(index: int, ts_url: str, segments_dir: str, max_retries:
             return None
 
 
-def download_all_segments(ts_urls: list[str], file_name: str, output_dir: str = OUTPUT_DIR, max_workers: int = 3):
+def download_all_segments(
+    ts_urls: list[str],
+    file_name: str,
+    output_dir: str = OUTPUT_DIR,
+    max_workers: int = 3,
+):
     """
     Downloads all video segments listed in a list of URLs in parallel and combines them into a single .mp4 file.
     Args:
@@ -97,7 +106,8 @@ def download_all_segments(ts_urls: list[str], file_name: str, output_dir: str = 
         output_dir (str, optional): The directory where the downloaded segments will be saved. Defaults to OUTPUT_DIR.
         max_workers (int, optional): The maximum number of threads to use for downloading segments in parallel. Defaults to 5.
     """
-    segments_dir = os.path.join(output_dir, "segments")
+    safe_name = sanitize_filename(file_name)
+    segments_dir = os.path.join(output_dir, f"segments_{safe_name}")
     os.makedirs(segments_dir, exist_ok=True)
 
     segment_files = []
@@ -106,7 +116,8 @@ def download_all_segments(ts_urls: list[str], file_name: str, output_dir: str = 
 
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
         future_to_index = {
-            executor.submit(download_ts_segment, index, url, segments_dir): index for index, url in enumerate(ts_urls)
+            executor.submit(download_ts_segment, index, url, segments_dir): index
+            for index, url in enumerate(ts_urls)
         }
 
         for future in as_completed(future_to_index):
@@ -139,6 +150,12 @@ def download_all_segments(ts_urls: list[str], file_name: str, output_dir: str = 
     # Delete the temporary segment files
     for segment_file in segment_files:
         os.remove(segment_file)
+
+    # Remove the empty segments directory
+    try:
+        os.rmdir(segments_dir)
+    except OSError:
+        pass
 
 
 def download_by_m3u8(file_name: str):
